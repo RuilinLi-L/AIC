@@ -1,0 +1,23 @@
+# Local environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Competition data (large and restricted by contest rules)
+初赛数据集/
+data/
+train/
+test/
+
+# Model weights and generated experiment artifacts
+clip-ViT-B-32/
+outputs/
+*.pt
+*.pth
+*.safetensors
+pred_results.csv
+*.zip
+
+# Local agent notes
+.learnings/
