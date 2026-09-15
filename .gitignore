@@ -21,3 +21,4 @@ pred_results.csv
 
 # Local agent notes
 .learnings/
+.tmp/

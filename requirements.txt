@@ -1,4 +1,5 @@
 torch>=2.1
+torchvision>=0.18
 transformers>=4.40,<5
 Pillow>=9.5
 numpy>=1.24
