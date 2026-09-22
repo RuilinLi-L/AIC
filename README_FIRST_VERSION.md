@@ -1,4 +1,40 @@
-# AIC 噪声标签细粒度识别：鲁棒 CLIP V4
+# AIC 噪声标签细粒度识别：鲁棒 CLIP
+
+## V6：复赛/半决赛单模型主路线
+
+V6 是当前唯一主训练与提交路线；V3–V5 文件继续保留用于复现实验。它固定使用官方 CLIP ViT-B/32，训练最后 4 个视觉块的 Q/V LoRA（rank 8、alpha 16）、128 维残差适配器和视觉原型分类头。训练脚本不接收测试目录，先在尾部安全的固定留出集上选择 epoch，再从官方 CLIP 初始权重对全部训练数据重训相同轮数。
+
+Windows CMD 下直接运行：
+
+```bat
+run_v6_train.cmd robust_visual_v6 cuda
+run_v6_submit.cmd robust_visual_v6 cuda
+```
+
+如果整轮结束后训练中断，用第三个参数恢复：
+
+```bat
+run_v6_train.cmd robust_visual_v6 cuda ".\outputs\robust_visual_v6\resume_latest.pt"
+```
+
+训练目录固定生成 `best_model.pt`、`model.pt`、`sample_reliability.npz`、`metrics.json` 和断点文件。提交脚本使用 `best_model.pt` 的留出集原图/HFlip logits 做严格 5 折宏平均校准，把参数写回单个最终 `model.pt`，再生成无表头 `pred_results.csv` 及只包含该 CSV 的 `pred_results.zip`。
+
+V6 的批大小固定为 64、梯度累积为 4（有效 batch 256），最多训练 12 轮。首次运行还会在本次运行目录生成四视图冻结特征缓存 `frozen_clip_multiview_v6.npy`。如显存无法容纳 batch 64，应换用显存更大的设备；不要修改损失组合来规避显存问题。
+
+在开始正式长跑前安装依赖并执行测试：
+
+```bat
+python.exe -m pip install -r requirements.txt
+python.exe -m unittest discover -s tests -v
+```
+
+最终提交文件位于：
+
+```text
+.\outputs\robust_visual_v6\pred_results.zip
+```
+
+## V4/V5 历史说明
 
 当前线上最佳为 **59.4264**（V3：5% 留出 + HFlip TTA + 验证集类别偏置校准）。V4 在保留这套分类头的基础上，加入：
 
