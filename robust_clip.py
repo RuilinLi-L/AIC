@@ -122,9 +122,25 @@ def safe_open_image(path: str) -> Image.Image:
     try:
         with Image.open(path) as image:
             return ImageOps.exif_transpose(image).convert("RGB")
-    except Exception as exc:  # Pillow can read some truncated files but not all.
-        print(f"[warning] failed to decode {path}: {exc}; using a black image")
-        return Image.new("RGB", (224, 224), color=(0, 0, 0))
+    except Exception as exif_exc:
+        # A malformed EXIF/TIFF block must not discard otherwise valid pixels.
+        # Reopen the file because Pillow images are lazy and the first context
+        # may have left the decoder in a failed state.
+        try:
+            with Image.open(path) as image:
+                recovered = image.convert("RGB")
+                recovered.load()
+                print(
+                    f"[warning] ignored corrupt EXIF for {path}: {exif_exc}",
+                    flush=True,
+                )
+                return recovered
+        except Exception as decode_exc:  # Pillow cannot recover the pixel payload.
+            print(
+                f"[warning] failed to decode {path}: {decode_exc}; using a black image",
+                flush=True,
+            )
+            return Image.new("RGB", (224, 224), color=(0, 0, 0))
 
 
 def _clip_image_transform(processor: CLIPProcessor, augmentation: bool | str = False):

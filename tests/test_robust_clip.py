@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import torch
@@ -20,6 +22,7 @@ from robust_clip import (
     prototype_pseudo_targets,
     robust_visual_prototypes_and_scores,
     symmetric_kl_loss,
+    safe_open_image,
     trainable_state_dict,
 )
 from calibrate import class_bias_from_logits, stratified_folds
@@ -62,6 +65,15 @@ class MockLoraClip(MockClip):
 
 
 class RobustClipTests(unittest.TestCase):
+    def test_safe_open_retries_pixels_when_exif_transpose_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "valid_pixels.png"
+            Image.new("RGB", (8, 8), color=(12, 34, 56)).save(path)
+            with patch("robust_clip.ImageOps.exif_transpose", side_effect=OSError("bad EXIF")):
+                recovered = safe_open_image(str(path))
+            self.assertEqual(recovered.size, (8, 8))
+            self.assertEqual(recovered.getpixel((0, 0)), (12, 34, 56))
+
     def test_calibration_bias_penalizes_overpredicted_class(self):
         logits = torch.tensor([[4.0, 0.0], [3.0, 0.0], [2.0, 0.0], [1.0, 0.0]])
         bias = class_bias_from_logits(logits)
