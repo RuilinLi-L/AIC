@@ -1,0 +1,41 @@
+{
+  "kind": "v20_gpu3_shared_engineering_probe",
+  "recipe": "loraplus_rank32",
+  "physical_gpu": 3,
+  "pytorch_allocator_cap_fraction": 0.4,
+  "pytorch_allocator_cap_gib": 32,
+  "minimum_free_mib": 49152,
+  "free_mib_at_start": 55653,
+  "source_snapshot": "/home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716",
+  "shares_gpu_with_v19_control": true,
+  "formal_training_started": false,
+  "canonical_preflight_outputs_modified": false,
+  "started_at": "2026-10-06T14:35:39.581272+08:00",
+  "status": "passed",
+  "peak_reserved_gib": 24.3828125,
+  "benchmark_success": true,
+  "configurations": [
+    {
+      "workers": 8,
+      "batch_size": 256,
+      "gradient_accumulation": 1,
+      "prefetch_factor": 1,
+      "pin_memory": false,
+      "success": true,
+      "status": "ok",
+      "images_per_s": 107.71166926522083,
+      "seconds": 19.01372445502784,
+      "measured_optimizer_steps": 8,
+      "stats": {
+        "loss": 3.281875789165497,
+        "noisy_accuracy": 0.4880952380952381,
+        "ambiguous_rows_seen": 32,
+        "repaired_rows": 126,
+        "projected_batches": 0,
+        "soft_teacher_rows": 885
+      },
+      "peak_allocated_gib": 23.921151638031006
+    }
+  ],
+  "finished_at": "2026-10-06T14:38:23.304047+08:00"
+}

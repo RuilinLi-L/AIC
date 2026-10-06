@@ -26,3 +26,5 @@ GPU 池只使用物理 0、1、2、3，每次等待至少 71,680MiB 空闲显存
 交付包位于 `delivery/refit/`（晋级）或 `delivery/fallback_refit/`（回退），包括无表头、37444 行的 `pred_results.csv`、只含该 CSV 的 ZIP 和 `provenance.json`。交付校验包括文件名、四位类别、完整 calibration、来源与选择哈希、全量训练池和阶段。提交排行榜后才可判断实际提分。
 
 2026-10-06 14:25:28（北京时间）复查：DoRA 在 13:26 取得 GPU3，13:29 已完成官方模型检查和真实 batch256 短测；LoRA+ 仍处于 `waiting_gpu`。两路预检结束后才冻结资源并训练，当前尚无 `train_v20.py` 正式训练进程或新分数。
+
+2026-10-06 14:35–14:38，经用户要求在 GPU3 与 V19 对照共卡进行 LoRA+ 短测。单独的[受限短测脚本](exports/v20_startup/run_gpu3_shared_probe.py)设置 PyTorch allocator 上限32GiB，原始[上下文及结果](exports/v20_startup/gpu3_shared_probe_20261006_143539/context.json)记录峰值 allocated 23.92GiB、reserved 24.38GiB，官方两步检查及2暖机+8正式短测步均通过，无 OOM。该结果证明共卡短测可行；未更改封存源码、canonical preflight 报告或正式训练调度，24轮训练仍未开始。

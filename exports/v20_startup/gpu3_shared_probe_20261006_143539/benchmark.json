@@ -1,0 +1,67 @@
+{
+  "format_version": 20,
+  "success": true,
+  "status": "ok",
+  "recipe": "loraplus_rank32",
+  "image_size": 320,
+  "zoom_shortest_edge": 366,
+  "lora_rank": 32,
+  "lora_alpha": 64.0,
+  "lora_dropout": 0.0,
+  "mlp_lora_dropout": 0.0,
+  "base_model_identity": {
+    "config.json": "f77ab2f54a03090c5dcac397670c254c39cd7a311611cafb5a79de3b07cd13ff",
+    "model.safetensors": "99d28a652e6ec46629ab7047a0ac82c69b1fe11e0ce672c43af65d3a9a3fc05d",
+    "pytorch_model.bin": "a62934cf6216e42859223aed2df08b4f1bd0042cb31be80d2db5cd54f71c0d16"
+  },
+  "initialization": "official_base_only",
+  "trained_checkpoint_weights_loaded": false,
+  "chosen_workers": 8,
+  "batch_size": 256,
+  "gradient_accumulation": 1,
+  "prefetch_factor": 1,
+  "pin_memory": false,
+  "precision": "bf16_autocast_fp32_stats",
+  "warmup_optimizer_steps": 2,
+  "measured_optimizer_steps": 8,
+  "sampled_train_rows": 2560,
+  "sampled_indices_sha256": "904cbf05895fc55fc97d23aa09bf353f833445f4b02515fdb8ef9c3f8f9c076f",
+  "dataset_signature": "00f10949e8bae22c104cfccfc14dab9adcc9b8e0b473aa7438f8604230a80f40",
+  "configurations": [
+    {
+      "workers": 8,
+      "batch_size": 256,
+      "gradient_accumulation": 1,
+      "prefetch_factor": 1,
+      "pin_memory": false,
+      "success": true,
+      "status": "ok",
+      "images_per_s": 107.71166926522083,
+      "seconds": 19.01372445502784,
+      "measured_optimizer_steps": 8,
+      "stats": {
+        "loss": 3.281875789165497,
+        "noisy_accuracy": 0.4880952380952381,
+        "ambiguous_rows_seen": 32,
+        "repaired_rows": 126,
+        "projected_batches": 0,
+        "soft_teacher_rows": 885
+      },
+      "peak_allocated_gib": 23.921151638031006
+    }
+  ],
+  "scenario": "real train images; controlled epoch-5 targets and full queue; excludes full audits/validation",
+  "budget_estimate": {
+    "target_hours": 48,
+    "validation_epochs": 24,
+    "maximum_refit_epochs": 24,
+    "raw_training_hours": 17.451281550917415,
+    "planning_hours_range": [
+      34.17692232637612,
+      51.62820387729354
+    ],
+    "method": "throughput scaled to validate+maximum refit; heuristic 1.5-2.5x for audits/evaluation/prediction plus 8h joint-evaluation/setup reserve",
+    "excludes": "external dependency waits and changing server contention",
+    "not_a_completion_guarantee": true
+  }
+}
