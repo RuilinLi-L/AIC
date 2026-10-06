@@ -1,0 +1,47 @@
+{
+  "verified_at": "2026-10-06T15:08:50.396962+08:00",
+  "remote_snapshot": "/home/mcxu/lrl/AIC/.runs/v20_formal_shared_20261006_150101",
+  "work_dir": "/data/mcxu/AIC/outputs/v20_joint_20261006",
+  "tmux_session": "v20_formal_shared_20261006",
+  "supervisor_pid": 4032261,
+  "v20_training_pid": 4033610,
+  "v19_control_pid": 3672399,
+  "physical_gpu": 3,
+  "recipe": "loraplus_rank32",
+  "batch_size": 256,
+  "gradient_accumulation": 1,
+  "stop_epoch": 24,
+  "schedule_epochs": 24,
+  "allocator_cap_gib": 32,
+  "training_start": "v20_start recipe=loraplus_rank32 stage=validate stop_epoch=24 schedule_epochs=24 train_rows=135519 validation_rows=10906",
+  "first_training_batch": "v20_progress stage=train_epoch_1 batches=1/530 rows=256 images_per_s=10.57 elapsed_s=24.2 allocated_gib=1.36 peak_gib=23.78",
+  "latest_training_batch": "v20_progress stage=train_epoch_1 batches=1/530 rows=256 images_per_s=10.57 elapsed_s=24.2 allocated_gib=1.36 peak_gib=23.78",
+  "traceback_in_log": false,
+  "v20_cpu_tests": 58,
+  "v19_compatibility_tests_previously_passed": 65,
+  "gpu_policy": "gpu3_shared_measured_v1",
+  "resource_sha256": "8424430a50de890622286e8587fa1fa007d4203234314cf34defca5271ab5bd0",
+  "source_manifest_sha256": "543160ffb56a8bf55ee8268822913c21b0c9b0d16cc0cef8b015e15a6f3f32ca",
+  "gpu_memory": "0, 55848 MiB, 25306 MiB\n1, 67684 MiB, 13469 MiB\n2, 79448 MiB, 1705 MiB\n3, 51124 MiB, 30029 MiB\n4, 56926 MiB, 24227 MiB\n5, 57040 MiB, 24113 MiB\n6, 56908 MiB, 24245 MiB\n7, 56678 MiB, 24475 MiB\n",
+  "dora_status": {
+    "format_version": 20,
+    "stage": "dora_rank32",
+    "status": "waiting_gpu",
+    "detail": {
+      "minimum_free_mib": 53248,
+      "allowed_gpus": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "policy": "gpu3_shared_measured_v1",
+      "cap_gib": 48
+    },
+    "updated_at": "2026-10-06T15:08:23.756094+08:00",
+    "elapsed_wall_clock_seconds": 20709.7593626976,
+    "budget_hours": 48,
+    "budget_exceeded": false,
+    "automatic_short_training": false
+  }
+}

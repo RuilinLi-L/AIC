@@ -30,3 +30,5 @@ GPU 池只使用物理 0、1、2、3。原独占策略要求71,680MiB空闲；20
 2026-10-06 14:35–14:38，经用户要求在 GPU3 与 V19 对照共卡进行 LoRA+ 短测。单独的[受限短测脚本](exports/v20_startup/run_gpu3_shared_probe.py)设置 PyTorch allocator 上限32GiB，原始[上下文及结果](exports/v20_startup/gpu3_shared_probe_20261006_143539/context.json)记录峰值 allocated 23.92GiB、reserved 24.38GiB，官方两步检查及2暖机+8正式短测步均通过，无 OOM。该结果证明共卡短测可行；未更改封存源码、canonical preflight 报告或正式训练调度，24轮训练仍未开始。
 
 2026-10-06 正式启动使用新的封存快照 `v20_formal_shared_20261006_150101`，保留原48小时计时起点。V20回归58项通过（含测试夹具导入的5项重复执行），沿用已通过的V19兼容65项；资源计划绑定此次源码哈希及成功共卡短测。旧V20排队进程被替换，V19继续运行。启动脚本和验收证据见 [正式启动记录](exports/v20_formal_startup/run_paths.json)。实时主日志改为 `pipeline/formal_supervisor.log`。
+
+15:08:50核验：LoRA+正式训练PID4033610在GPU3完成第1轮第1/530个batch（256行），峰值allocated 23.78GiB，无Traceback。监督PID4032261，V19对照PID3672399仍存活，DoRA等待显存。详见 [首批训练验收](exports/v20_formal_startup/formal_startup_verification.json)。
