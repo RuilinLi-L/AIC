@@ -17,7 +17,7 @@
 
 后台入口为 [run_v20_pipeline.sh](scripts/run_v20_pipeline.sh)，调度器为 [v20_pipeline.py](v20_pipeline.py)。独立输出路径、服务器快照路径及进程信息记录在 [启动记录](exports/v20_startup/run_paths.json)；[源码清单](exports/v20_startup/source_manifest.json)与[源码包](exports/v20_startup/v20_source.tar.gz)用于核验实际运行版本。
 
-GPU 池只使用物理 0、1、2、3，每次等待至少 71,680MiB 空闲显存，同时遵守 V19 和 V20 的同卡锁。正式训练前依次完成官方模型两步检查与真实 batch256 短测。typed CUDA OOM 记为 resource_infeasible；其他故障记为失败，不降低 batch 或自动重复探测。完整 24 epoch 的 V19 对照或候选未完成时继续等待，不能静默略过。源码、审计、探测和资源配置在启动训练前绑定哈希。
+GPU 池只使用物理 0、1、2、3。原独占策略要求71,680MiB空闲；2026-10-06正式启动改用已短测的 `gpu3_shared_measured_v1`：优先 GPU3，LoRA+ 的 PyTorch allocator 上限32GiB、准入空闲36GiB，DoRA 上限48GiB、准入空闲52GiB。GPU3允许与V19共卡，两个V20任务仍受同卡互斥锁约束；0/1/2继续遵守V19锁。上限只限制allocator，不改变 batch、模型、损失、训练轮数或科学配置。正式训练前依次完成官方模型两步检查与真实 batch256 短测。typed CUDA OOM 记为 resource_infeasible；其他故障记为失败，不降低 batch 或自动重复探测。完整 24 epoch 的 V19 对照或候选未完成时继续等待，不能静默略过。源码、审计、探测和资源配置在启动训练前绑定哈希。
 
 48 小时为总墙钟目标，计时包含准备、显存排队、训练、评估、V19 等待、refit 和预测。超时会显示警告并保留完整实验；不会缩短训练。断点恢复会核验 A/B/m 状态、EMA、参数分组、学习率、优化器步数及调度器；完成的联合评估和 selection 验证后复用，不重写。
 
@@ -28,3 +28,5 @@ GPU 池只使用物理 0、1、2、3，每次等待至少 71,680MiB 空闲显存
 2026-10-06 14:25:28（北京时间）复查：DoRA 在 13:26 取得 GPU3，13:29 已完成官方模型检查和真实 batch256 短测；LoRA+ 仍处于 `waiting_gpu`。两路预检结束后才冻结资源并训练，当前尚无 `train_v20.py` 正式训练进程或新分数。
 
 2026-10-06 14:35–14:38，经用户要求在 GPU3 与 V19 对照共卡进行 LoRA+ 短测。单独的[受限短测脚本](exports/v20_startup/run_gpu3_shared_probe.py)设置 PyTorch allocator 上限32GiB，原始[上下文及结果](exports/v20_startup/gpu3_shared_probe_20261006_143539/context.json)记录峰值 allocated 23.92GiB、reserved 24.38GiB，官方两步检查及2暖机+8正式短测步均通过，无 OOM。该结果证明共卡短测可行；未更改封存源码、canonical preflight 报告或正式训练调度，24轮训练仍未开始。
+
+2026-10-06 正式启动使用新的封存快照 `v20_formal_shared_20261006_150101`，保留原48小时计时起点。V20回归58项通过（含测试夹具导入的5项重复执行），沿用已通过的V19兼容65项；资源计划绑定此次源码哈希及成功共卡短测。旧V20排队进程被替换，V19继续运行。启动脚本和验收证据见 [正式启动记录](exports/v20_formal_startup/run_paths.json)。实时主日志改为 `pipeline/formal_supervisor.log`。

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import shutil
 import time
+from v20_gpu import EXCLUSIVE, SHARED, gpu_policy
 
 from v15_pipeline_support import atomic_json, sha256
 from v19_pipeline_support import validate_audit, verify_package
@@ -120,12 +121,21 @@ def resource_for_recipe(resource, recipe):
 
 def read_resource_plan(path):
     resource = json.loads(Path(path).read_text())
+    runtime = gpu_policy(resource.get('gpu_runtime', {}).get('name', EXCLUSIVE))
     if (resource.get('format_version') != 20 or resource.get('kind') != 'v20_resource_plan'
             or resource.get('branch') != 'deduplicated_control' or resource.get('gates') != GATES
             or resource.get('activation_checkpointing') is not False
             or resource.get('allowed_gpus') != [0, 1, 2, 3]
-            or resource.get('minimum_free_mib') != 71680):
+            or resource.get('minimum_free_mib') != runtime['minimum_free_mib']
+            or resource.get('gpu_runtime', gpu_policy()) != runtime):
         raise ValueError('invalid frozen V20 resource plan')
+    if runtime['name'] == SHARED:
+        probe_path = _check_binding(resource['shared_probe'])
+        probe = json.loads(probe_path.read_text())
+        if (probe.get('status') != 'passed' or probe.get('recipe') != 'loraplus_rank32'
+                or probe.get('physical_gpu') != 3 or probe.get('pytorch_allocator_cap_gib') != 32
+                or probe.get('benchmark_success') is not True):
+            raise ValueError('shared GPU policy requires the verified capped GPU3 probe')
     for field in ('audit', 'dedup', 'source_manifest', 'v19_resource'):
         _check_binding(resource[field])
     audit = validate_audit(resource['audit']['path'], resource['dataset_signature'])
@@ -187,6 +197,7 @@ def freeze_resources(root, args):
     old = read_v19(args.v19_resource)
     if old['branch'] != 'deduplicated_control':
         raise ValueError('V20 requires the matched deduplicated V19 experiment')
+    runtime = gpu_policy(os.environ.get('AIC_V20_GPU_POLICY', EXCLUSIVE))
     entries = {}
     for key, recipe, run in zip(('candidate_a', 'candidate_b'), RESOURCE_SPECS, (args.candidate_a, args.candidate_b)):
         run = Path(run).resolve()
@@ -200,13 +211,15 @@ def freeze_resources(root, args):
                             benchmark=_binding(run / 'benchmark.json'), official_check=_binding(run / 'official_check.json'))
     result = dict(format_version=20, kind='v20_resource_plan', branch='deduplicated_control',
                   activation_checkpointing=False, candidates=entries, gates=GATES,
-                  allowed_gpus=[0, 1, 2, 3], minimum_free_mib=71680,
+                  allowed_gpus=[0, 1, 2, 3], minimum_free_mib=runtime['minimum_free_mib'], gpu_runtime=runtime,
                   dataset_signature=old['dataset_signature'], base_model_identity=old['base_model_identity'],
                   audit=old['audit'], dedup=old['dedup'], source_manifest=_binding(args.source_manifest),
                   v19_resource=_binding(args.v19_resource),
                   control={k: old['control'][k] for k in ('recipe', 'run_dir', 'status')},
                   dependencies={entry['recipe']: {k: entry[k] for k in ('recipe', 'run_dir', 'status')}
                                 for entry in old['candidates'].values()}, historical_refit=old['historical_refit'])
+    if runtime['name'] == SHARED:
+        result['shared_probe'] = _binding(os.environ['AIC_V20_SHARED_PROBE'])
     output = Path(args.resource_json)
     if output.exists():
         if read_resource_plan(output) != result:

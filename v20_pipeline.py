@@ -11,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import time
+import threading
+from v20_gpu import EXCLUSIVE, SHARED, gpu_policy, task_limit
 from types import SimpleNamespace
 
 from v20_pipeline_support import (atomic_json, sha256, state, initialize,
@@ -39,41 +41,48 @@ class Pipeline:
         self.metadata = os.environ['AIC_BENCHMARK_METADATA']
         self.timeout = int(os.environ.get('AIC_GPU_TIMEOUT', '172800'))
         self.interval = int(os.environ.get('AIC_POLL_INTERVAL', '30'))
+        self.gpu_policy = gpu_policy(os.environ.get('AIC_V20_GPU_POLICY', EXCLUSIVE))
+        self.gpu_context = threading.local()
+        self.first_candidate_ready = threading.Event()
         self.started = initialize(self.root)['started_at_unix']
         os.environ['AIC_PIPELINE_STARTED_AT'] = str(self.started)
 
     @contextmanager
     def lease(self, label):
         started = time.monotonic()
+        limit = task_limit(self.gpu_policy, label)
         locks = self.root / 'v20_gpu_leases'
         locks.mkdir(parents=True, exist_ok=True)
         while True:
-            for gpu in range(4):
+            for gpu in self.gpu_policy['gpu_order']:
                 handles = []
                 try:
                     # Honor the V19 mutex too: its existing recovery worker must
                     # not race a V20 job onto the same newly freed card.
-                    for directory in (locks, self.old_resources.parent):
+                    directories = (locks,) if gpu in self.gpu_policy['shared_gpus'] else (locks, self.old_resources.parent)
+                    for directory in directories:
                         handle = (directory / f'gpu_{gpu}.lock').open('a')
                         handles.append(handle)
                         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
                     result = subprocess.run(['nvidia-smi', f'--id={gpu}', '--query-gpu=memory.free',
                         '--format=csv,noheader,nounits'], text=True, capture_output=True, check=True)
                     free = int(result.stdout.strip())
-                    if free >= 71680:
-                        state(self.root, label, 'gpu_ready', f'{label}_status.json', {'physical_gpu': gpu, 'free_mib': free})
+                    if free >= limit['minimum_free_mib']:
+                        state(self.root, label, 'gpu_ready', f'{label}_status.json', {'physical_gpu': gpu, 'free_mib': free, 'policy': self.gpu_policy['name'], **limit})
                         print(f'v20_gpu_ready task={label} physical_gpu={gpu} free_mib={free}', flush=True)
+                        self.gpu_context.cap_gib = limit['cap_gib']
                         yield gpu
                         return
                 except BlockingIOError:
                     continue
                 finally:
+                    self.gpu_context.cap_gib = None
                     for handle in reversed(handles):
                         fcntl.flock(handle, fcntl.LOCK_UN)
                         handle.close()
-            state(self.root, label, 'waiting_gpu', f'{label}_status.json', {'minimum_free_mib': 71680, 'allowed_gpus': [0, 1, 2, 3]})
+            state(self.root, label, 'waiting_gpu', f'{label}_status.json', {'minimum_free_mib': limit['minimum_free_mib'], 'allowed_gpus': [0, 1, 2, 3], 'policy': self.gpu_policy['name'], 'cap_gib': limit['cap_gib']})
             if time.monotonic() - started >= self.timeout:
-                raise TimeoutError(f'{label}: no allowed GPU reached 71680 MiB')
+                raise TimeoutError(f'{label}: no allowed GPU reached {limit["minimum_free_mib"]} MiB')
             time.sleep(self.interval)
 
     def run(self, args, log, gpu=None):
@@ -82,9 +91,11 @@ class Pipeline:
         if gpu is not None:
             env['CUDA_VISIBLE_DEVICES'] = str(gpu)
         Path(log).parent.mkdir(parents=True, exist_ok=True)
+        cap = getattr(self.gpu_context, 'cap_gib', None) if gpu is not None else None
+        command = ['run_cuda_capped_v20.py', '--cap-gib', str(cap), *args] if cap else args
         with Path(log).open('a', buffering=1) as handle:
-            handle.write(f'command={json.dumps(args)} physical_gpu={gpu}\n')
-            subprocess.run([self.python, '-B', '-u', *args], cwd=self.project, env=env,
+            handle.write(f'command={json.dumps(command)} physical_gpu={gpu}\n')
+            subprocess.run([self.python, '-B', '-u', *command], cwd=self.project, env=env,
                            stdout=handle, stderr=subprocess.STDOUT, check=True)
 
     def preflight(self, recipe):
@@ -138,13 +149,21 @@ class Pipeline:
         return out
 
     def candidate(self, recipe):
+        if self.gpu_policy['name'] == SHARED and recipe == 'dora_rank32':
+            state(self.root, 'waiting_loraplus_admission', 'waiting', f'{recipe}_status.json')
+            if not self.first_candidate_ready.wait(self.timeout):
+                raise TimeoutError('LoRA+ GPU admission did not complete')
         resource = read_resource_plan(self.resources)
         entry = resource_for_recipe(resource, recipe)
         if entry['status'] == 'resource_infeasible':
+            if recipe == 'loraplus_rank32':
+                self.first_candidate_ready.set()
             state(self.root, 'resource_infeasible', 'skipped', f'{recipe}_status.json')
             return None
         run = Path(entry['run_dir'])
         with self.lease(recipe) as gpu:
+            if recipe == 'loraplus_rank32':
+                self.first_candidate_ready.set()
             if not self.complete_training(run):
                 state(self.root, 'validation_training', 'running', f'{recipe}_status.json')
                 self.run(['train_v20.py', *self.train_args(recipe, run, 'validate', self.resources)], run / 'train.log', gpu)
@@ -197,6 +216,9 @@ class Pipeline:
             state(self.root, label, "failed", f"{label}_status.json",
                   {"error": type(error).__name__, "message": str(error)})
             raise
+        finally:
+            if label == 'loraplus_rank32':
+                self.first_candidate_ready.set()
 
     def execute(self):
         state(self.root, 'preflight_queue', 'running')
@@ -210,10 +232,12 @@ class Pipeline:
                 candidate_b=str(self.work / RECIPES[1]), model_dir=self.model,
                 source_manifest=str(self.project / 'source_manifest.json'), resource_json=str(self.resources)))
         resource = read_resource_plan(self.resources)
+        if resource.get('gpu_runtime', gpu_policy()) != self.gpu_policy:
+            raise ValueError('supervisor GPU policy differs from frozen resource plan')
         if not Path(os.environ['AIC_SELECTION']).exists():
             state(self.root, 'validation_and_joint_evaluation', 'running')
             with ThreadPoolExecutor(max_workers=2) as pool:
-                jobs = {recipe: pool.submit(self.guarded, self.candidate, recipe, recipe) for recipe in RECIPES}
+                jobs = {recipe: pool.submit(self.guarded, self.candidate, recipe, recipe) for recipe in ('loraplus_rank32', 'dora_rank32')}
                 new = {recipe: job.result() for recipe, job in jobs.items()}
             state(self.root, 'baseline_wait_and_joint_evaluation', 'running')
             entries = [resource['control'], *resource['dependencies'].values()]
@@ -239,7 +263,7 @@ class Pipeline:
                 shutil.copyfile(source / name, out / name)
             export_submission(self.root, 'fallback_refit', provenance['checkpoint'], self.data / 'test')
         else:
-            with self.lease('winner_refit') as gpu:
+            with self.lease(selected['recipe'] + '_refit') as gpu:
                 self.predict(selected['source_checkpoint'], 'validation', gpu)
                 run = self.work / 'refit'
                 run.mkdir(parents=True, exist_ok=True)

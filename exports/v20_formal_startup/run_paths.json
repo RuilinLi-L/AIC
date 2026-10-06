@@ -1,0 +1,5 @@
+{
+  "remote_snapshot": "/home/mcxu/lrl/AIC/.runs/v20_formal_shared_20261006_150101",
+  "remote_work": "/data/mcxu/AIC/outputs/v20_joint_20261006",
+  "gpu_policy": "gpu3_shared_measured_v1"
+}
