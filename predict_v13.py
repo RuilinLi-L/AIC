@@ -1,0 +1,169 @@
+"""Generate and validate a calibrated single-model V13 competition submission."""
+
+from __future__ import annotations
+
+import argparse
+import re
+import zipfile
+from pathlib import Path
+from typing import Sequence
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+
+from v13_model import FourViewTestDataset, build_classifier_from_checkpoint
+from predict import class_id, load_class_map, output_name
+from robust_clip import list_test_images, resolve_device
+from train_v13 import FORMAT_VERSION
+from v7_views import VIEW_NAMES, normalize_view_weights
+from v13_runtime import autocast_context, loader_options, precision_name, Progress
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--model-dir", default="clip-ViT-B-32")
+    parser.add_argument("--test-dir", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--zip-output", required=True)
+    parser.add_argument("--class-map", default=None)
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--workers", type=int, default=16)
+    parser.add_argument("--prefetch-factor", type=int, default=2)
+    parser.add_argument("--device", default="auto")
+    parser.add_argument("--filename-mode", choices=["basename", "relative"], default="basename")
+    parser.add_argument("--index-offset", type=int, default=0)
+    parser.add_argument("--logits-output", default=None)
+    parser.add_argument("--expected-rows", type=int, default=37444)
+    return parser.parse_args()
+
+
+def _weighted_logits(classifier, batch, weights: dict[str, float], device: torch.device):
+    need_center = any(name in weights for name in ("center", "hflip"))
+    need_zoom = any(name in weights for name in ("zoom256", "zoom256_hflip"))
+    pixels: dict[str, torch.Tensor] = {}
+    if need_center:
+        center = batch["center"].to(device, non_blocking=True)
+        pixels["center"] = center
+        pixels["hflip"] = torch.flip(center, dims=[3])
+    if need_zoom:
+        zoom = batch["zoom256"].to(device, non_blocking=True)
+        pixels["zoom256"] = zoom
+        pixels["zoom256_hflip"] = torch.flip(zoom, dims=[3])
+    result = None
+    for name in VIEW_NAMES:
+        weight = float(weights.get(name, 0.0))
+        if weight <= 0.0:
+            continue
+        with autocast_context(device):
+            logits = classifier(pixels[name], None)[0]
+        logits = logits.float()
+        result = weight * logits if result is None else result + weight * logits
+    if result is None:
+        raise ValueError("calibrated V13 checkpoint has no active TTA views")
+    return result
+
+
+def validate_submission(
+    csv_path: Path, zip_path: Path, expected_rows: int, expected_names: Sequence[str] | None = None
+) -> None:
+    lines = csv_path.read_text(encoding="utf-8").splitlines()
+    if expected_rows > 0 and len(lines) != expected_rows:
+        raise ValueError(f"submission has {len(lines)} rows, expected {expected_rows}")
+    names = []
+    for line in lines:
+        fields = line.rsplit(",", 1)
+        if len(fields) != 2 or not fields[0] or re.fullmatch(r" [0-9]{4}", fields[1]) is None:
+            raise ValueError("submission contains a malformed row or non-four-digit class ID")
+        names.append(fields[0])
+    if len(names) != len(set(names)):
+        raise ValueError("submission contains duplicate filenames")
+    if expected_names is not None and names != list(expected_names):
+        raise ValueError("submission filenames/order differ from the test image list")
+    with zipfile.ZipFile(zip_path, "r") as archive:
+        names = archive.namelist()
+        if names != ["pred_results.csv"]:
+            raise ValueError(f"ZIP must contain only pred_results.csv, found {names}")
+        zipped_lines = archive.read("pred_results.csv").decode("utf-8").splitlines()
+    if zipped_lines != lines:
+        raise ValueError("ZIP CSV does not match the generated submission")
+
+
+def main() -> None:
+    args = parse_args()
+    if args.batch_size < 1 or args.workers < 0 or args.expected_rows < 1:
+        raise ValueError("invalid batch-size, workers, or expected-rows")
+    loader_options(args.workers, args.prefetch_factor)
+    device = resolve_device(args.device)
+    if Path(args.output).resolve() == Path(args.checkpoint).resolve() or Path(args.zip_output).resolve() == Path(args.checkpoint).resolve():
+        raise ValueError("prediction output must not overwrite the checkpoint")
+    checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    if checkpoint.get("format_version") != FORMAT_VERSION:
+        raise ValueError("checkpoint is not V13")
+    calibration = checkpoint.get("calibration")
+    if not isinstance(calibration, dict) or "view_weights" not in calibration:
+        raise ValueError("run evaluate_tta_v13.py before V13 prediction")
+    if calibration.get("precision") != precision_name(device):
+        raise ValueError("prediction precision differs from calibration; recalibrate on the target device")
+    weights = normalize_view_weights(calibration["view_weights"])
+    class_names: Sequence[str] = checkpoint["class_names"]
+    class_bias = checkpoint.get("class_bias")
+    if class_bias is None:
+        raise ValueError("calibrated V13 checkpoint is missing class_bias")
+    class_bias = torch.as_tensor(class_bias, dtype=torch.float32, device=device)
+    if class_bias.shape != (len(class_names),) or not torch.isfinite(class_bias).all():
+        raise ValueError("V13 class_bias has the wrong shape")
+    classifier, processor = build_classifier_from_checkpoint(checkpoint, args.model_dir, device)
+    test_root = Path(args.test_dir).resolve()
+    paths = list_test_images(test_root)
+    if args.expected_rows > 0 and len(paths) != args.expected_rows:
+        raise ValueError(f"test directory has {len(paths)} images, expected {args.expected_rows}")
+    names = [output_name(path, test_root, args.filename_mode) for path in paths]
+    if args.filename_mode == "basename" and len(names) != len(set(names)):
+        raise ValueError("duplicate test basenames; use --filename-mode relative")
+    loader = DataLoader(
+        FourViewTestDataset(paths, processor),
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=device.type == "cuda",
+        persistent_workers=False,
+        **loader_options(args.workers, args.prefetch_factor),
+    )
+    predictions: list[int] = []
+    all_logits: list[np.ndarray] = []
+    progress = Progress("prediction", device, len(loader))
+    with torch.no_grad():
+        for batch_id, batch in enumerate(loader, 1):
+            logits = _weighted_logits(classifier, batch, weights, device) + class_bias
+            predictions.extend(logits.argmax(dim=1).cpu().tolist())
+            if args.logits_output:
+                all_logits.append(logits.cpu().numpy())
+            progress.update(batch_id, len(logits))
+    mapping = load_class_map(args.class_map)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8", newline="") as handle:
+        for name, index in zip(names, predictions):
+            numeric_id = class_id(class_names[index], index, mapping, args.index_offset)
+            handle.write(f"{name}, {numeric_id:04d}\n")
+    if args.logits_output:
+        logits_path = Path(args.logits_output)
+        logits_path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(logits_path, np.concatenate(all_logits, axis=0))
+    zip_path = Path(args.zip_output)
+    zip_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.write(output, arcname="pred_results.csv")
+    validate_submission(output, zip_path, args.expected_rows, names)
+    counts = np.bincount(np.asarray(predictions), minlength=len(class_names))
+    print(
+        f"v13_submission rows={len(predictions)} classes_predicted={int((counts > 0).sum())} "
+        f"weights={weights} csv={output.resolve()} zip={zip_path.resolve()}",
+        flush=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

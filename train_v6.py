@@ -245,7 +245,16 @@ def load_or_create_multiview_features(
     device: torch.device,
     batch_size: int,
     workers: int,
+    *,
+    pin_memory: bool | None = None,
+    prefetch_factor: int | None = None,
 ) -> np.ndarray:
+    if pin_memory is not None and not isinstance(pin_memory, bool):
+        raise ValueError("pin_memory must be bool or None")
+    if prefetch_factor is not None and (
+        isinstance(prefetch_factor, bool) or not isinstance(prefetch_factor, int) or prefetch_factor < 1
+    ):
+        raise ValueError("prefetch_factor must be a positive integer or None")
     metadata_path = _feature_cache_metadata_path(cache_path)
     if cache_path.is_file() and metadata_path.is_file():
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -272,8 +281,9 @@ def load_or_create_multiview_features(
         batch_size=max(1, min(batch_size, 32)),
         shuffle=False,
         num_workers=workers,
-        pin_memory=device.type == "cuda",
+        pin_memory=device.type == "cuda" if pin_memory is None else pin_memory,
         persistent_workers=workers > 0,
+        **({"prefetch_factor": prefetch_factor} if workers > 0 and prefetch_factor is not None else {}),
     )
     model.eval()
     for batch_id, batch in enumerate(loader, 1):

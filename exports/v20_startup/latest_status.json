@@ -1,0 +1,85 @@
+{
+  "checked_at": "2026-10-06T14:25:28.518385+08:00",
+  "states": {
+    "budget.json": {
+      "format_version": 20,
+      "started_at_unix": 1791249793.9967067,
+      "started_at": "2026-10-06T09:23:13.996707+08:00",
+      "budget_hours": 48,
+      "automatic_short_training": false,
+      "includes": [
+        "preparation",
+        "queue",
+        "validation",
+        "joint_evaluation",
+        "baseline_wait",
+        "refit",
+        "prediction"
+      ]
+    },
+    "dora_rank32_preflight_status.json": {
+      "format_version": 20,
+      "stage": "dora_rank32_preflight",
+      "status": "gpu_ready",
+      "detail": {
+        "physical_gpu": 3,
+        "free_mib": 81140
+      },
+      "updated_at": "2026-10-06T13:26:21.863831+08:00",
+      "elapsed_wall_clock_seconds": 14587.867101430893,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    },
+    "dora_rank32_status.json": {
+      "format_version": 20,
+      "stage": "preflight_complete",
+      "status": "complete",
+      "detail": null,
+      "updated_at": "2026-10-06T13:29:05.726411+08:00",
+      "elapsed_wall_clock_seconds": 14751.7296833992,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    },
+    "loraplus_rank32_preflight_status.json": {
+      "format_version": 20,
+      "stage": "loraplus_rank32_preflight",
+      "status": "waiting_gpu",
+      "detail": {
+        "minimum_free_mib": 71680,
+        "allowed_gpus": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "updated_at": "2026-10-06T14:25:07.397991+08:00",
+      "elapsed_wall_clock_seconds": 18113.401253461838,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    },
+    "status.json": {
+      "format_version": 20,
+      "stage": "preflight_queue",
+      "status": "running",
+      "detail": null,
+      "updated_at": "2026-10-06T12:22:21.954741+08:00",
+      "elapsed_wall_clock_seconds": 10747.958024024963,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    }
+  },
+  "logs": {
+    "pipeline/supervisor.log": "v20_startup_verified source_files=238 cpu_tests=115\nv20_gpu_ready task=dora_rank32_preflight physical_gpu=3 free_mib=81140",
+    "dora_rank32/official_check.log": "command=[\"scripts/check_v20_official.py\", \"--recipe\", \"dora_rank32\", \"--model-dir\", \"/home/mcxu/lrl/AIC/clip-ViT-B-32\", \"--output\", \"/data/mcxu/AIC/outputs/v20_joint_20261006/dora_rank32/official_check.json\", \"--device\", \"cuda\"] physical_gpu=3\nUsing a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.\nloaded_clip=/home/mcxu/lrl/AIC/clip-ViT-B-32/0_CLIPModel projection_dim=512 device=cuda\nloaded_clip=/home/mcxu/lrl/AIC/clip-ViT-B-32/0_CLIPModel projection_dim=512 device=cuda\n{\"format_version\": 20, \"base_model_identity\": {\"config.json\": \"f77ab2f54a03090c5dcac397670c254c39cd7a311611cafb5a79de3b07cd13ff\", \"model.safetensors\": \"99d28a652e6ec46629ab7047a0ac82c69b1fe11e0ce672c43af65d3a9a3fc05d\", \"pytorch_model.bin\": \"a62934cf6216e42859223aed2df08b4f1bd0042cb31be80d2db5cd54f71c0d16\"}, \"success\": true, \"recipe\": \"dora_rank32\", \"lora_modules\": 72, \"visual_trainable_parameters\": 5391360, \"image_size\": 320, \"zoom_shortest_edge\": 366, \"lora_rank\": 32, \"lora_alpha\": 64.0, \"lora_dropout\": 0.0, \"mlp_lora_dropout\": 0.0, \"tokens\": 101, \"layernorm_tensors\": 0, \"layernorm_parameters\": 0, \"optimizer_steps\": 2, \"all_attention_and_mlp_gradients_nonzero\": true, \"frozen_backbone_unchanged\": true, \"roundtrip_logits_exact\": true, \"missing_mlp_weight_rejected\": true, \"missing_magnitude_weight_rejected\": true, \"losses\": [7.445777893066406, 6.400230884552002], \"device\": \"cuda\", \"scope\": \"engineering check; synthetic pixels; no accuracy claim\"}",
+    "dora_rank32/benchmark.log": "    \"validation_epochs\": 24,\n    \"maximum_refit_epochs\": 24,\n    \"raw_training_hours\": 19.590875391127174,\n    \"planning_hours_range\": [\n      37.38631308669076,\n      56.97718847781793\n    ],\n    \"method\": \"throughput scaled to validate+maximum refit; heuristic 1.5-2.5x for audits/evaluation/prediction plus 8h joint-evaluation/setup reserve\",\n    \"excludes\": \"external dependency waits and changing server contention\",\n    \"not_a_completion_guarantee\": true\n  }\n}"
+  },
+  "gpu_memory": "0, 25306\n1, 17057\n2, 8877\n3, 55653\n4, 24557\n5, 24753\n6, 24251\n7, 24321\n",
+  "processes": [
+    "3444202 3444201    7402 /data/mcxu/conda-envs/aic/bin/python -B -u /home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716/v20_pipeline.py"
+  ]
+}

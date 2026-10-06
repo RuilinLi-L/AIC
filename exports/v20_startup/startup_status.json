@@ -1,0 +1,76 @@
+{
+  "checked_at": "2026-10-06T12:22:54.759185+08:00",
+  "tmux_active": true,
+  "states": {
+    "budget.json": {
+      "format_version": 20,
+      "started_at_unix": 1791249793.9967067,
+      "started_at": "2026-10-06T09:23:13.996707+08:00",
+      "budget_hours": 48,
+      "automatic_short_training": false,
+      "includes": [
+        "preparation",
+        "queue",
+        "validation",
+        "joint_evaluation",
+        "baseline_wait",
+        "refit",
+        "prediction"
+      ]
+    },
+    "dora_rank32_preflight_status.json": {
+      "format_version": 20,
+      "stage": "dora_rank32_preflight",
+      "status": "waiting_gpu",
+      "detail": {
+        "minimum_free_mib": 71680,
+        "allowed_gpus": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "updated_at": "2026-10-06T12:22:52.272001+08:00",
+      "elapsed_wall_clock_seconds": 10778.275277376175,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    },
+    "loraplus_rank32_preflight_status.json": {
+      "format_version": 20,
+      "stage": "loraplus_rank32_preflight",
+      "status": "waiting_gpu",
+      "detail": {
+        "minimum_free_mib": 71680,
+        "allowed_gpus": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "updated_at": "2026-10-06T12:22:52.241872+08:00",
+      "elapsed_wall_clock_seconds": 10778.245141267776,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    },
+    "status.json": {
+      "format_version": 20,
+      "stage": "preflight_queue",
+      "status": "running",
+      "detail": null,
+      "updated_at": "2026-10-06T12:22:21.954741+08:00",
+      "elapsed_wall_clock_seconds": 10747.958024024963,
+      "budget_hours": 48,
+      "budget_exceeded": false,
+      "automatic_short_training": false
+    }
+  },
+  "supervisor_log_tail": "v20_startup_verified source_files=238 cpu_tests=115",
+  "processes": [
+    "3444202 3444201      48 python          /data/mcxu/conda-envs/aic/bin/python -B -u /home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716/v20_pipeline.py"
+  ],
+  "gpu_memory_free_mib": "0, 25306\n1, 2483\n2, 12603\n3, 49937\n4, 24469\n5, 24683\n6, 23927\n7, 25069\n"
+}

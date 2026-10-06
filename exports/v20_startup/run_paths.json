@@ -1,0 +1,29 @@
+{
+  "remote_snapshot": "/home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716",
+  "remote_work": "/data/mcxu/AIC/outputs/v20_joint_20261006",
+  "remote_test_log": "/home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716/cpu_regression.log",
+  "launch_script_sha256": "e5c1348b54c69fb039d8eeb9ac745bf47686cc5290112fb63b6e91661ccb88ef",
+  "budget_started_at_unix": 1791249793.9967067,
+  "budget_clock_anchor": "first_saved_v20_implementation_artifact",
+  "tmux_session": "v20_joint_20261006",
+  "environment": {
+    "AIC_PROJECT_DIR": "/home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716",
+    "AIC_PYTHON": "/data/mcxu/conda-envs/aic/bin/python",
+    "AIC_OUTPUT_ROOT": "/data/mcxu/AIC/outputs",
+    "AIC_V20_ROOT": "/data/mcxu/AIC/outputs/v20_joint_20261006",
+    "AIC_V19_RESOURCE_JSON": "/data/mcxu/AIC/outputs/v19_dedup_20261005/pipeline/resource_plan.json",
+    "AIC_MODEL_DIR": "/home/mcxu/lrl/AIC/clip-ViT-B-32",
+    "AIC_DATA_DIR": "/home/mcxu/lrl/AIC/data",
+    "AIC_MANIFEST": "/data/mcxu/AIC/outputs/v19_dedup_20261005/inputs/dataset_manifest_v19_dedup.json",
+    "AIC_FEATURE_CACHE": "/data/mcxu/AIC/outputs/v19_dedup_20261005/inputs/frozen.npy",
+    "AIC_BENCHMARK_METADATA": "/data/mcxu/AIC/outputs/v19_dedup_20261005/inputs/benchmark_metadata.pt",
+    "AIC_PIPELINE_STARTED_AT": "1791249793.9967067",
+    "AIC_GPU_TIMEOUT": "172800",
+    "AIC_POLL_INTERVAL": "30",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "AIC_PIN_MEMORY": "0"
+  }
+}

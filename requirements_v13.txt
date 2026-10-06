@@ -1,0 +1,7 @@
+# Validated A100 environment: Python 3.11.16. No environment is changed by V13 scripts.
+torch==2.14.0
+torchvision==0.29.0
+transformers==4.57.6
+Pillow==12.3.0
+numpy==2.4.6
+tqdm==4.70.1

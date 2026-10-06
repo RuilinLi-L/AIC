@@ -1,0 +1,28 @@
+{
+  "format_version": 20,
+  "implementation_status": "implemented_and_launched",
+  "gpu_training_status": "queued_waiting_for_preflight_gpu",
+  "v20_cpu_tests": 50,
+  "v19_compatibility_tests": 65,
+  "total_cpu_tests": 115,
+  "historical_source_common_file_differences": [],
+  "source_snapshot": "/home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716",
+  "source_manifest_sha256": "5a69b2b907589ee5ad02ef88ea6590c8d7376ce4fd3d1bc8df8d399db336088e",
+  "source_archive_sha256": "c6445222b0bfc8651ad07c1a8ebab47a2ad70bb229d437384873dda78f62453d",
+  "test_log_sha256": {
+    "v20_final_tests.log": "0133b838b2b6bd4f3ee9b1b6c418faa893190752d161990ec028b39fe9458a65",
+    "cpu_regression.log": "bf66a0f7b5b77adfcc272ec6cb688c1af8cdcd27a22947512da3e44d727c78c0"
+  },
+  "launch": {
+    "session": "v20_joint_20261006",
+    "launched_at": "2026-10-06T12:22:06.516465+08:00",
+    "work": "/data/mcxu/AIC/outputs/v20_joint_20261006",
+    "snapshot": "/home/mcxu/lrl/AIC/.runs/v20_joint_20261006_094716"
+  },
+  "startup_checked_at": "2026-10-06T12:22:54.759185+08:00",
+  "supervisor_pid": 3444202,
+  "new_online_score": null,
+  "gpu_official_check_completed": false,
+  "real_batch_probe_completed": false,
+  "created_at": "2026-10-06T12:23:59.408412+08:00"
+}
